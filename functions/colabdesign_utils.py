@@ -18,7 +18,7 @@ from .pyrosetta_utils import pr_relax, align_pdbs
 from .generic_utils import update_failures
 
 # hallucinate a binder
-def binder_hallucination(design_name, starting_pdb, chain, target_hotspot_residues, length, seed, helicity_value, design_models, advanced_settings, design_paths, failure_csv):
+def binder_hallucination(design_name, starting_pdb, chain, target_hotspot_residues, length, seed, helicity_value, design_models, advanced_settings, design_paths, failure_csv, binder_chain=None, pos=None, loops=None):
     model_pdb_path = os.path.join(design_paths["Trajectory"], design_name+".pdb")
 
     # clear GPU memory for new trajectory
@@ -32,9 +32,20 @@ def binder_hallucination(design_name, starting_pdb, chain, target_hotspot_residu
     # sanity check for hotspots
     if target_hotspot_residues == "":
         target_hotspot_residues = None
-
-    af_model.prep_inputs(pdb_filename=starting_pdb, chain=chain, binder_len=length, hotspot=target_hotspot_residues, seed=seed, rm_aa=advanced_settings["omit_AAs"],
-                        rm_target_seq=advanced_settings["rm_template_seq_design"], rm_target_sc=advanced_settings["rm_template_sc_design"])
+    if not binder_chain:
+        af_model.prep_inputs(pdb_filename=starting_pdb, chain=chain, binder_len=length, hotspot=target_hotspot_residues, seed=seed, rm_aa=advanced_settings["omit_AAs"],
+                            rm_target_seq=advanced_settings["rm_template_seq_design"], rm_target_sc=advanced_settings["rm_template_sc_design"])
+    elif binder_chain:
+        af_model.prep_inputs(pdb_filename=starting_pdb, chain=chain, binder_chain=binder_chain, hotspot=target_hotspot_residues,
+                             seed=seed, rm_aa=advanced_settings["omit_AAs"],
+                             rm_target_seq=advanced_settings["rm_template_seq_design"],
+                             rm_target_sc=advanced_settings["rm_template_sc_design"])
+    elif pos and loops:
+        af_model.prep_inputs(pdb_filename=starting_pdb, chain=chain, pos=pos, length=length, binder_chain=binder_chain, hotspot=target_hotspot_residues,
+                             seed=seed, rm_aa=advanced_settings["omit_AAs"],
+                             rm_target_seq=advanced_settings["rm_template_seq_design"],
+                             rm_target_sc=advanced_settings["rm_template_sc_design"])
+        af_model.rewire(loops=loops)
 
     ### Update weights based on specified settings
     af_model.opt["weights"].update({"pae":advanced_settings["weights_pae_intra"],
